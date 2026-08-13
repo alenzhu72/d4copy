@@ -14,6 +14,8 @@ public sealed class NodeCatalogService
         if (!Root.GetProperty("skillTrees").TryGetProperty(treeName, out var tree)) throw new InvalidDataException($"坐标目录中没有 {profile.Class} 的技能树。");
         var nodes = tree.GetProperty("nodes").EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Object).ToDictionary(x => x.GetProperty("id").GetInt32());
         var skills = Root.GetProperty("skills");
+        var mainNodesByPower = nodes.Values.Where(x => x.TryGetProperty("reward", out var rw) && rw.TryGetProperty("type", out var t) && t.GetInt32() == 0 && rw.TryGetProperty("power", out _))
+            .GroupBy(x => x.GetProperty("reward").GetProperty("power").GetString() ?? "").ToDictionary(x => x.Key, x => x.First().GetProperty("id").GetInt32());
         var result = new List<OverlayStep>();
         foreach (var allocation in profile.Skills)
         {
@@ -22,11 +24,28 @@ public sealed class NodeCatalogService
             var power = reward.TryGetProperty("power", out var p) ? p.GetString() ?? "" : "";
             var name = power;
             if (power.Length > 0 && skills.TryGetProperty(power, out var skill) && skill.TryGetProperty("name", out var skillName)) name = skillName.GetString() ?? power;
+            name = ChineseLocalization.Skill(power, name);
             var pos = node.GetProperty("pos");
             allocation.Name = name; allocation.X = pos.GetProperty("x").GetDouble(); allocation.Y = pos.GetProperty("y").GetDouble();
-            result.Add(new OverlayStep { Mode = "技能", Group = treeName, Label = name, Clicks = allocation.Ranks, LogicalX = allocation.X, LogicalY = allocation.Y });
+            var rewardType = reward.TryGetProperty("type", out var typeNode) ? typeNode.GetInt32() : 0;
+            result.Add(new OverlayStep { NodeId = allocation.NodeId, ParentNodeId = rewardType != 0 && mainNodesByPower.TryGetValue(power, out var parentId) ? parentId : null, Mode = "技能", Group = treeName, Label = name, Clicks = allocation.Ranks, LogicalX = allocation.X, LogicalY = allocation.Y });
         }
         return result;
+    }
+
+    public List<OverlayStep> ResolveSkillCalibrationAnchors(BuildProfile profile)
+    {
+        var treeName = profile.Class switch { "Barbarian" or "野蛮人" => "Barbarian", "Sorcerer" or "巫师" => "Sorcerer", "Rogue" or "游侠" => "Rogue", "Druid" or "德鲁伊" => "Druid", "Necromancer" or "死灵法师" => "Necromancer", "Spiritborn" or "魂灵师" => "Spiritborn", "Paladin" or "圣骑士" => "Paladin", _ => profile.Class };
+        if (!Root.GetProperty("skillTrees").TryGetProperty(treeName, out var tree)) return [];
+        var skills = Root.GetProperty("skills"); var anchors = new List<OverlayStep>();
+        foreach (var node in tree.GetProperty("nodes").EnumerateArray().Where(x => x.ValueKind == JsonValueKind.Object))
+        {
+            if (!node.TryGetProperty("reward", out var reward) || !reward.TryGetProperty("type", out var type) || type.GetInt32() != 0 || !reward.TryGetProperty("power", out var powerNode)) continue;
+            var power = powerNode.GetString() ?? ""; if (!skills.TryGetProperty(power, out var skill) || !skill.TryGetProperty("category", out var category) || category.GetInt32() != 0) continue;
+            var fallback = skill.TryGetProperty("name", out var nameNode) ? nameNode.GetString() ?? power : power; var pos = node.GetProperty("pos");
+            anchors.Add(new OverlayStep { Mode = "技能", Group = treeName, Label = ChineseLocalization.Skill(power, fallback), LogicalX = pos.GetProperty("x").GetDouble(), LogicalY = pos.GetProperty("y").GetDouble() });
+        }
+        return anchors;
     }
 
     public List<OverlayStep> ResolveParagon(ParagonBoardPlan plan)

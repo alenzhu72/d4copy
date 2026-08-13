@@ -53,4 +53,19 @@ public static class ChineseLocalization
     }
 
     public static string Aspect(long nid) => AspectNames.TryGetValue(nid, out var name) ? name : $"传奇威能 #{nid}";
+
+    private static readonly Dictionary<string, string> SkillNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Druid_Earthspike"] = "大地尖刺", ["Druid_WindShear"] = "风剪", ["Druid_StormStrike"] = "风暴打击", ["Druid_Claw"] = "利爪", ["Druid_Maul"] = "重殴",
+        ["Druid_Landslide"] = "山崩", ["Druid_LightningStorm"] = "雷暴", ["Druid_Tornado"] = "龙卷风", ["Druid_Pulverize"] = "粉碎", ["Druid_Shred_NEW"] = "撕碎",
+        ["Druid_EarthenBulwark"] = "大地壁垒", ["Druid_CycloneArmor"] = "气旋护甲", ["Druid_BloodHowl"] = "血性狂吼", ["Druid_DebilitatingRoar"] = "衰弱咆哮",
+        ["Druid_Ravens"] = "乌鸦", ["Druid_VineCreeper"] = "剧毒藤蔓", ["Druid_WolfPack"] = "群狼",
+        ["Druid_Hurricane"] = "飓风", ["Druid_Rabies"] = "狂犬撕咬", ["Druid_Trample"] = "践踏", ["Druid_Boulder"] = "巨石",
+        ["Druid_Petrify"] = "石化", ["Druid_GrizzlyRage"] = "灰熊狂怒", ["Druid_Cataclysm"] = "浩劫", ["Druid_Lacerate"] = "割裂",
+        ["Barbarian_Bash"] = "猛击", ["Barbarian_Frenzy"] = "狂乱", ["Barbarian_LungingStrike"] = "突刺打击", ["Barbarian_Flay"] = "剥皮",
+        ["Barbarian_Whirlwind"] = "旋风斩", ["Barbarian_HammeroftheAncients"] = "先祖之锤", ["Barbarian_Rend"] = "痛割", ["Barbarian_DoubleSwing"] = "双重横扫", ["Barbarian_Upheaval"] = "扬石飞沙",
+        ["Barbarian_RallyingCry"] = "集结呐喊", ["Barbarian_ChallengingShout"] = "挑战怒吼", ["Barbarian_WarCry"] = "战吼", ["Barbarian_IronSkin"] = "钢铁之肤", ["Barbarian_WrathoftheBerserker"] = "狂战士之怒"
+    };
+
+    public static string Skill(string power, string fallback) => SkillNames.TryGetValue(power, out var name) ? name : fallback;
 }

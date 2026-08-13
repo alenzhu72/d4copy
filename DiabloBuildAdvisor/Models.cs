@@ -45,6 +45,8 @@ public sealed class ParagonBoardPlan
 
 public sealed class OverlayStep
 {
+    public int NodeId { get; set; }
+    public int? ParentNodeId { get; set; }
     public string Mode { get; set; } = "技能";
     public string Group { get; set; } = "";
     public string Label { get; set; } = "";

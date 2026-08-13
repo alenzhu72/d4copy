@@ -4,7 +4,11 @@
     <Border Background="#0F1013" BorderBrush="#24252A" BorderThickness="0,0,1,0">
       <Grid Margin="24"><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="48"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel><TextBlock Text="DIABLO IV" Foreground="{StaticResource GoldBrush}" FontSize="12" FontWeight="Bold"/><TextBlock Text="庇护所配装助手" FontSize="21" FontWeight="SemiBold" Margin="0,6,0,0"/></StackPanel>
-        <StackPanel Grid.Row="2"><TextBlock Text="01  BUILD 概览" Margin="0,14" Foreground="{StaticResource GoldBrush}"/><TextBlock Text="02  属性诊断" Margin="0,14" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="03  装备对比" Margin="0,14" Foreground="{StaticResource MutedBrush}"/><Border Height="1" Background="#2A2B30" Margin="0,18"/><TextBlock Text="支持来源" Foreground="{StaticResource MutedBrush}" FontSize="12"/><TextBlock Text="Maxroll · Mobalytics&#x0a;D4Builds · 通用 JSON" Margin="0,8" LineHeight="24"/></StackPanel>
+        <StackPanel Grid.Row="2"><TextBlock Text="01  BUILD 概览" Margin="0,14" Foreground="{StaticResource GoldBrush}"/><TextBlock Text="02  属性诊断" Margin="0,14" Foreground="{StaticResource MutedBrush}"/><TextBlock Text="03  装备对比" Margin="0,14" Foreground="{StaticResource MutedBrush}"/><Border Height="1" Background="#2A2B30" Margin="0,18"/>
+          <Grid Margin="0,0,0,7"><TextBlock Text="最近 BUILD" Foreground="{StaticResource MutedBrush}" FontSize="12"/><Button Content="清除" HorizontalAlignment="Right" Padding="7,2" Margin="0" FontSize="10" Background="Transparent" Foreground="{StaticResource MutedBrush}" Click="ClearHistory_Click"/></Grid>
+          <ListBox x:Name="HistoryList" Height="210" Background="Transparent" BorderThickness="0" SelectionChanged="HistoryList_SelectionChanged" ScrollViewer.HorizontalScrollBarVisibility="Disabled"><ListBox.ItemTemplate><DataTemplate><Border Padding="8,7" Margin="0,0,0,3" Background="#17181C" CornerRadius="4" ToolTip="{Binding Url}"><StackPanel><TextBlock Text="{Binding Display}" TextTrimming="CharacterEllipsis" FontSize="12"/><TextBlock Text="{Binding Detail}" TextTrimming="CharacterEllipsis" Foreground="{StaticResource MutedBrush}" FontSize="10" Margin="0,3,0,0"/></StackPanel></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
+          <Border Height="1" Background="#2A2B30" Margin="0,12"/><TextBlock Text="支持来源" Foreground="{StaticResource MutedBrush}" FontSize="12"/><TextBlock Text="Maxroll · Mobalytics&#x0a;D4Builds · 通用 JSON" Margin="0,8" LineHeight="24"/>
+        </StackPanel>
         <TextBlock Grid.Row="3" Text="本地优先 · 不上传 Build 文件" Foreground="{StaticResource MutedBrush}" FontSize="11" TextWrapping="Wrap"/>
       </Grid>
     </Border>
@@ -31,7 +35,7 @@
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1.4*"/></Grid.ColumnDefinitions>
           <StackPanel Margin="0,0,18,0"><TextBlock Text="游戏红点覆盖提示" FontSize="18" FontWeight="SemiBold"/><TextBlock Text="打开游戏技能树或对应巅峰盘，保持 100% 缩放，然后进行两点校准。覆盖层不会自动点击游戏。" Foreground="{StaticResource MutedBrush}" TextWrapping="Wrap" Margin="0,5,0,14" LineHeight="20"/>
             <WrapPanel><Button Content="校准技能树" Click="StartSkillOverlay_Click"/><Button Content="校准巅峰盘" Click="StartParagonOverlay_Click" Background="#303138" Foreground="White"/><Button Content="关闭红点" Click="CloseOverlay_Click" Background="#303138" Foreground="White"/></WrapPanel>
-            <TextBlock Text="快捷键：F8 显示/隐藏 · F9 下一步 · Shift+F9 上一步" Foreground="{StaticResource GoldBrush}" Margin="0,13,0,0"/>
+            <TextBlock Text="F7 切换表面层手动对齐；拖动或方向键微调" Foreground="#62C48D" Margin="0,13,0,0"/><TextBlock Text="F8 显示/隐藏 · F9 下一步 · Shift+F9 上一步" Foreground="{StaticResource GoldBrush}" Margin="0,5,0,0"/>
           </StackPanel>
           <StackPanel Grid.Column="1"><TextBlock Text="导入的路线" FontWeight="SemiBold"/><TextBlock x:Name="RouteSummaryText" Text="尚未导入技能与巅峰数据" Foreground="{StaticResource MutedBrush}" Margin="0,5,0,10"/>
             <ComboBox x:Name="ParagonBoardBox" DisplayMemberPath="Display" Background="#202126" Foreground="White" Padding="8" Margin="0,0,0,8"/>

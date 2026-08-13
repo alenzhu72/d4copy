@@ -9,5 +9,6 @@
 /tree.json
 /maxroll-7rv2l10x.json
 /maxroll-catalog.json
+/release-v*/
 
 # Runtime calibration is stored under LocalAppData and must remain local.

@@ -1,0 +1,3 @@
+<Window x:Class="DiabloBuildAdvisor.OverlayWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" WindowStyle="None" AllowsTransparency="True" Background="Transparent" Topmost="True" ShowInTaskbar="False" ResizeMode="NoResize" Left="0" Top="0">
+  <Canvas x:Name="MarkerCanvas" IsHitTestVisible="False"/>
+</Window>

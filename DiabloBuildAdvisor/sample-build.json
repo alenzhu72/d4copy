@@ -1,0 +1,16 @@
+{
+  "name": "旋风斩野蛮人 · 当前装备",
+  "class": "野蛮人",
+  "weaponDamage": 2500,
+  "mainStat": 920,
+  "additiveDamage": 650,
+  "critChance": 0.65,
+  "critDamage": 0.80,
+  "attackSpeed": 0.12,
+  "multiplicativeAspects": 2,
+  "gear": [
+    { "slot": "头盔", "name": "先祖战盔", "aspect": "勇力威能", "affixes": [{"name":"冷却时间缩减","value":8.5},{"name":"最大生命","value":1200,"unit":""}] },
+    { "slot": "手套", "name": "狂战手甲", "aspect": "期待威能", "affixes": [{"name":"暴击率","value":7.5},{"name":"旋风斩等级","value":3,"unit":"级"}] },
+    { "slot": "双手武器", "name": "远古巨斧", "aspect": "加速威能", "affixes": [{"name":"力量","value":180,"unit":""},{"name":"暴击伤害","value":52}] }
+  ]
+}

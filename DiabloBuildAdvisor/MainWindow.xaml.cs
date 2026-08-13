@@ -12,13 +12,22 @@ public partial class MainWindow : Window
     private BuildProfile? _current;
     private BuildProfile? _target;
     private readonly LinkImporter _linkImporter = new();
+    private readonly BuildHistoryStore _historyStore = new();
     private readonly NodeCatalogService _nodeCatalog = new();
     private readonly CalibrationStore _calibrationStore = new();
     private List<OverlayStep> _skillSteps = [];
     private OverlayWindow? _overlay;
     private HwndSource? _source;
-    private const int HotkeyToggle = 7101, HotkeyNext = 7102, HotkeyPrevious = 7103, WmHotkey = 0x0312;
-    public MainWindow() { InitializeComponent(); SourceInitialized += OnSourceInitialized; Closed += (_, _) => UnregisterHotkeys(); }
+    private const int HotkeyToggle = 7101, HotkeyNext = 7102, HotkeyPrevious = 7103, HotkeyAdjust = 7104, WmHotkey = 0x0312;
+    public MainWindow()
+    {
+        InitializeComponent(); HistoryList.ItemsSource = _historyStore.Load(); SourceInitialized += OnSourceInitialized;
+        Closed += (_, _) =>
+        {
+            _overlay?.Close(); _overlay = null;
+            UnregisterHotkeys();
+        };
+    }
 
     private async void ImportJson_Click(object sender, RoutedEventArgs e)
     {
@@ -30,10 +39,22 @@ public partial class MainWindow : Window
 
     private async void ImportLink_Click(object sender, RoutedEventArgs e)
     {
-        try { SetBusy(true, "正在读取公开页面…"); LoadProfile(await _linkImporter.ImportAsync(UrlBox.Text.Trim())); }
+        try { SetBusy(true, "正在读取公开页面…"); var url = UrlBox.Text.Trim(); var profile = await _linkImporter.ImportAsync(url); LoadProfile(profile); SaveHistory(url, profile); }
         catch (Exception ex) { ShowError(ex.Message); }
         finally { SetBusy(false); }
     }
+
+    private async void HistoryList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (HistoryList.SelectedItem is not BuildHistoryItem item || !IsEnabled) return;
+        HistoryList.SelectedItem = null; UrlBox.Text = item.Url;
+        try { SetBusy(true, "正在读取历史 Build…"); var profile = await _linkImporter.ImportAsync(item.Url); LoadProfile(profile); SaveHistory(item.Url, profile); }
+        catch (Exception ex) { ShowError(ex.Message); }
+        finally { SetBusy(false); }
+    }
+
+    private void SaveHistory(string url, BuildProfile profile) { HistoryList.ItemsSource = _historyStore.Add(url, profile); }
+    private void ClearHistory_Click(object sender, RoutedEventArgs e) { _historyStore.Clear(); HistoryList.ItemsSource = Array.Empty<BuildHistoryItem>(); }
 
     private void SetTarget_Click(object sender, RoutedEventArgs e)
     {
@@ -63,7 +84,9 @@ public partial class MainWindow : Window
     private void StartSkillOverlay_Click(object sender, RoutedEventArgs e)
     {
         if (_skillSteps.Count < 2) { ShowError("当前 Build 没有足够的技能节点数据。请导入 Maxroll Planner 链接。"); return; }
-        RouteStepsList.ItemsSource = _skillSteps; StartCalibration(_skillSteps);
+        var anchors = _current is null ? [] : _nodeCatalog.ResolveSkillCalibrationAnchors(_current);
+        if (anchors.Count < 2) { ShowError("无法找到同屏的基础技能校准点。"); return; }
+        RouteStepsList.ItemsSource = _skillSteps; StartCalibration(_skillSteps, FindCalibrationTriple(anchors));
     }
 
     private void StartParagonOverlay_Click(object sender, RoutedEventArgs e)
@@ -71,31 +94,43 @@ public partial class MainWindow : Window
         if (ParagonBoardBox.SelectedItem is not ParagonBoardPlan plan) { ShowError("请先选择一块巅峰盘。"); return; }
         var steps = _nodeCatalog.ResolveParagon(plan); RouteStepsList.ItemsSource = steps;
         if (steps.Count < 2) { ShowError("这块巅峰盘没有足够的节点数据。"); return; }
-        StartCalibration(steps);
+        StartCalibration(steps, FindCalibrationTriple(steps));
     }
 
-    private void StartCalibration(List<OverlayStep> steps)
+    private void StartCalibration(List<OverlayStep> steps, (OverlayStep, OverlayStep, OverlayStep) anchors)
     {
-        var pair = FindFarthestPair(steps);
-        var calibrationKey = $"{steps[0].Mode}:{steps[0].Group}:{SystemParameters.PrimaryScreenWidth}x{SystemParameters.PrimaryScreenHeight}";
+        var calibrationKey = $"v3:{steps[0].Mode}:{steps[0].Group}:{SystemParameters.PrimaryScreenWidth}x{SystemParameters.PrimaryScreenHeight}";
         var saved = _calibrationStore.Get(calibrationKey);
         if (saved is not null && saved.ScreenWidth == SystemParameters.PrimaryScreenWidth && saved.ScreenHeight == SystemParameters.PrimaryScreenHeight &&
             MessageBox.Show("发现这个界面已保存的校准。\n\n选择“是”直接使用；选择“否”重新校准。", "使用已保存校准", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
         {
-            ShowOverlay(steps, pair, saved.A, saved.B); return;
+            ShowOverlay(steps, anchors, saved.A, saved.B, saved.C); return;
         }
         Hide();
-        var calibration = new CalibrationWindow(pair.Item1, pair.Item2);
+        var calibration = new CalibrationWindow(anchors.Item1, anchors.Item2, anchors.Item3);
         var success = calibration.ShowDialog() == true;
         Show(); Activate();
         if (!success) return;
-        _calibrationStore.Save(calibrationKey, calibration.ScreenA, calibration.ScreenB);
-        ShowOverlay(steps, pair, calibration.ScreenA, calibration.ScreenB);
+        _calibrationStore.Save(calibrationKey, calibration.ScreenA, calibration.ScreenB, calibration.ScreenC);
+        ShowOverlay(steps, anchors, calibration.ScreenA, calibration.ScreenB, calibration.ScreenC);
     }
-    private void ShowOverlay(List<OverlayStep> steps, (OverlayStep, OverlayStep) pair, Point screenA, Point screenB)
+    private void ShowOverlay(List<OverlayStep> steps, (OverlayStep, OverlayStep, OverlayStep) anchors, Point screenA, Point screenB, Point screenC)
     {
-        _overlay?.Close(); _overlay = new OverlayWindow(steps, new Point(pair.Item1.LogicalX, pair.Item1.LogicalY), new Point(pair.Item2.LogicalX, pair.Item2.LogicalY), screenA, screenB);
+        _overlay?.Close(); _overlay = new OverlayWindow(steps, new Point(anchors.Item1.LogicalX, anchors.Item1.LogicalY), new Point(anchors.Item2.LogicalX, anchors.Item2.LogicalY), new Point(anchors.Item3.LogicalX, anchors.Item3.LogicalY), screenA, screenB, screenC);
         _overlay.Show(); StatusText.Text = $"●  {steps[0].Mode}红点已显示";
+    }
+
+    private static (OverlayStep, OverlayStep, OverlayStep) FindCalibrationTriple(List<OverlayStep> steps)
+    {
+        if (steps.Count < 3) throw new InvalidOperationException("至少需要三个校准节点。");
+        var pair = FindFarthestPair(steps); var best = steps.First(x => !ReferenceEquals(x, pair.Item1) && !ReferenceEquals(x, pair.Item2)); var maxArea = -1d;
+        foreach (var candidate in steps)
+        {
+            if (ReferenceEquals(candidate, pair.Item1) || ReferenceEquals(candidate, pair.Item2)) continue;
+            var area = Math.Abs((pair.Item2.LogicalX - pair.Item1.LogicalX) * (candidate.LogicalY - pair.Item1.LogicalY) - (candidate.LogicalX - pair.Item1.LogicalX) * (pair.Item2.LogicalY - pair.Item1.LogicalY));
+            if (area > maxArea) { maxArea = area; best = candidate; }
+        }
+        return (pair.Item1, pair.Item2, best);
     }
 
     private static (OverlayStep, OverlayStep) FindFarthestPair(List<OverlayStep> steps)
@@ -108,15 +143,15 @@ public partial class MainWindow : Window
     private void OnSourceInitialized(object? sender, EventArgs e)
     {
         var hwnd = new WindowInteropHelper(this).Handle; _source = HwndSource.FromHwnd(hwnd); _source.AddHook(WndProc);
-        RegisterHotKey(hwnd, HotkeyToggle, 0, 0x77); RegisterHotKey(hwnd, HotkeyNext, 0, 0x78); RegisterHotKey(hwnd, HotkeyPrevious, 0x0004, 0x78);
+        RegisterHotKey(hwnd, HotkeyAdjust, 0, 0x76); RegisterHotKey(hwnd, HotkeyToggle, 0, 0x77); RegisterHotKey(hwnd, HotkeyNext, 0, 0x78); RegisterHotKey(hwnd, HotkeyPrevious, 0x0004, 0x78);
     }
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg != WmHotkey) return IntPtr.Zero; handled = true;
-        switch (wParam.ToInt32()) { case HotkeyToggle: _overlay?.ToggleOverlay(); break; case HotkeyNext: _overlay?.Next(); break; case HotkeyPrevious: _overlay?.Previous(); break; }
+        switch (wParam.ToInt32()) { case HotkeyAdjust: _overlay?.ToggleAdjustMode(); break; case HotkeyToggle: _overlay?.ToggleOverlay(); break; case HotkeyNext: _overlay?.Next(); break; case HotkeyPrevious: _overlay?.Previous(); break; }
         return IntPtr.Zero;
     }
-    private void UnregisterHotkeys() { var hwnd = new WindowInteropHelper(this).Handle; UnregisterHotKey(hwnd, HotkeyToggle); UnregisterHotKey(hwnd, HotkeyNext); UnregisterHotKey(hwnd, HotkeyPrevious); }
+    private void UnregisterHotkeys() { var hwnd = new WindowInteropHelper(this).Handle; UnregisterHotKey(hwnd, HotkeyAdjust); UnregisterHotKey(hwnd, HotkeyToggle); UnregisterHotKey(hwnd, HotkeyNext); UnregisterHotKey(hwnd, HotkeyPrevious); }
     [DllImport("user32.dll")] private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
     [DllImport("user32.dll")] private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
     private void SetBusy(bool busy, string? text = null) { IsEnabled = !busy; if (text is not null) StatusText.Text = text; }
